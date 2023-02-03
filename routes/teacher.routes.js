@@ -81,8 +81,6 @@ router.put("/add/section/:id", async (req, res) => {
   if (isSectionExist.length > 0)
     return res.status(409).json("Section Class Code Already Exist.");
 
-  console.log("hha");
-
   await Prof.findByIdAndUpdate(
     { _id: req.params.id },
     { $push: { section_handle: ProfSection } }
@@ -156,6 +154,25 @@ router.put("/enroll/student/:id", async (req, res) => {
       res.status(400).json(err);
       console.log(err);
     });
+});
+
+// Delete Student From the Section
+router.put("/delete/student/:id", async (req, res) => {
+  const studId = req.body.studId;
+  const class_code = req.body.class_code;
+
+  await Prof.findOneAndUpdate(
+    { _id: req.params.id, "section_handle.class_code": class_code },
+    {
+      $pull: {
+        "section_handle.$.students": {
+          studId: studId,
+        },
+      },
+    }
+  )
+    .then((result) => res.json("Student Remove Successfully."))
+    .catch((err) => res.status(400).json(err));
 });
 
 module.exports = router;
