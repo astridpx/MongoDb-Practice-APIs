@@ -2,9 +2,10 @@ const mongoose = require("mongoose");
 
 const studentsSchema = [
   {
-    _id: false,
-    studname: String,
-    studId: mongoose.Schema.Types.ObjectId,
+    // _id: false,
+    // studname: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Students",
   },
 ];
 

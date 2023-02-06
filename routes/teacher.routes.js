@@ -6,6 +6,9 @@ const Student = require("../models/student");
 
 router.get("/", async (req, res) => {
   await Prof.find()
+    .populate({
+      path: "section_handle.students",
+    })
     .then((prof) => {
       // res.header("Content-Type", "application/json");
       // res.send(JSON.stringify(prof, null, 4));
@@ -116,13 +119,6 @@ router.put("/enroll/student/:id", async (req, res) => {
   const studId = req.body.studId;
   const class_code = req.body.class_code;
 
-  const student = [
-    {
-      studname,
-      studId,
-    },
-  ];
-
   // check the student if exist in student DB
   const isStudentExist = await Student.findById(studId);
   if (!isStudentExist)
@@ -130,12 +126,10 @@ router.put("/enroll/student/:id", async (req, res) => {
 
   // check if the student is enrolled
   const isStudentErolled = await Prof.find({
-    "section_handle.students": {
-      $elemMatch: {
-        studId: studId,
-      },
-    },
+    "section_handle.class_code": class_code,
+    "section_handle.students": [studId],
   });
+
   if (isStudentErolled.length > 0)
     return res.status(409).json(" Student Is Already Enrolled.");
 
@@ -143,7 +137,7 @@ router.put("/enroll/student/:id", async (req, res) => {
     { "section_handle.class_code": class_code },
     {
       $push: {
-        "section_handle.$.students": student,
+        "section_handle.$.students": studId,
       },
     }
   )
@@ -174,5 +168,44 @@ router.put("/delete/student/:id", async (req, res) => {
     .then((result) => res.json("Student Remove Successfully."))
     .catch((err) => res.status(400).json(err));
 });
+
+// Update Proffessor Details
+router.put("/update/proffesor/:id", async (req, res) => {
+  const isProfId = await Prof.findOne({ prof_id: req.body.prof_id });
+
+  await Prof.findByIdAndUpdate(req.params.id).then((proffesor) => {
+    proffesor.fullname = req.body.fullname
+      ? req.body.fullname
+      : proffesor.fullname;
+    proffesor.age = req.body.age ? req.body.age : proffesor.age;
+    proffesor.prof_id = req.body.studId ? req.body.prof_id : proffesor.prof_id;
+    proffesor.birthday = req.body.birthday
+      ? req.body.birthday
+      : proffesor.birthday;
+    proffesor.major = req.body.major ? req.body.major : proffesor.major;
+    proffesor.email = req.body.email ? req.body.email : proffesor.email;
+    proffesor.password = req.body.password
+      ? req.body.password
+      : proffesor.password;
+
+    // PREVENT THE ID ERROR NULL
+    if (isProfId === null)
+      return proffesor
+        .save()
+        .then((result) => res.json("Update Status Success."))
+        .catch((err) => res.status(400).json(err));
+
+    // Prevent creating same ID
+    if (isProfId.id != req.params.id)
+      return res.status(409).json("This  ID is belong to someone.");
+
+    proffesor
+      .save()
+      .then((result) => res.json("Update status Success."))
+      .catch((err) => res.status(400).json(err));
+  });
+});
+
+//  Delete Student From the Section MUST BE UPDATE BECAUSE OF THE POPULATE REF CHANGE
 
 module.exports = router;
