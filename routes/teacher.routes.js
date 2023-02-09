@@ -115,23 +115,45 @@ router.put("/delete/section/:id", async (req, res) => {
 
 // ADD STUDENT TO THE SECTION
 router.put("/enroll/student/:id", async (req, res) => {
-  const studname = req.body.studname;
   const studId = req.body.studId;
   const class_code = req.body.class_code;
+
+  let studentExistId; // this will hold the array from the student fllter
+
+  // Function for student nested array
+  // @desc this will get the array of the students that will pass in studntExistId
+  const isStudentAlreadyEnrolled = (students) => {
+    students
+      .filter((stud) => stud.class_code === class_code)
+      .map((student) => {
+        studentExistId = student.students;
+      });
+  };
 
   // check the student if exist in student DB
   const isStudentExist = await Student.findById(studId);
   if (!isStudentExist)
-    return res.status(404).json(" Student Must Be Enroll First.");
+    return res.status(404).json("Student Must Be Enroll First.");
 
   // check if the student is enrolled
-  const isStudentErolled = await Prof.find({
-    "section_handle.class_code": class_code,
-    "section_handle.students": [studId],
+  const isStudentErolled = await Prof.findOne({
+    section_handle: {
+      $elemMatch: {
+        class_code: class_code,
+        // student: { $in: studId },
+      },
+    },
   });
 
-  if (isStudentErolled.length > 0)
-    return res.status(409).json(" Student Is Already Enrolled.");
+  // Prevent the class code error if its not exist
+  if (isStudentErolled === null)
+    return res.status(400).json("Class Code not Found.");
+
+  isStudentAlreadyEnrolled(isStudentErolled.section_handle);
+
+  // Prevent the student enroll again
+  if (studentExistId.includes(studId))
+    return res.status(409).json("Student Is Already Enrolled.");
 
   await Prof.findOneAndUpdate(
     { "section_handle.class_code": class_code },
@@ -159,9 +181,7 @@ router.put("/delete/student/:id", async (req, res) => {
     { _id: req.params.id, "section_handle.class_code": class_code },
     {
       $pull: {
-        "section_handle.$.students": {
-          studId: studId,
-        },
+        "section_handle.$.students": studId,
       },
     }
   )
@@ -205,7 +225,5 @@ router.put("/update/proffesor/:id", async (req, res) => {
       .catch((err) => res.status(400).json(err));
   });
 });
-
-//  Delete Student From the Section MUST BE UPDATE BECAUSE OF THE POPULATE REF CHANGE
 
 module.exports = router;
